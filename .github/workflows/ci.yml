@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+      - name: Статический анализ (flake8)
+        run: flake8 app tests
+      - name: Статический анализ (pylint)
+        run: pylint app --disable=C0114,R0903 --fail-under=8.5
+      - name: Запуск тестов
+        run: pytest -v
