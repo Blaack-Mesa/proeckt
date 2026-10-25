@@ -16,6 +16,11 @@ class AuthTests(ApiTestCase):
         body.update(over)
         return self.client.post("/api/auth/register", json=body)
 
+    def login(self, email, password):
+        """POST /api/auth/login с заданными учётными данными."""
+        return self.client.post("/api/auth/login",
+                                json={"email": email, "password": password})
+
     def test_register_ok_default_role_executor(self):
         resp = self.register()
         self.assertEqual(resp.status_code, 201)
@@ -50,8 +55,7 @@ class AuthTests(ApiTestCase):
 
     def test_login_ok_returns_valid_jwt(self):
         self.register()
-        resp = self.client.post("/api/auth/login", json={"email": "ivanov@example.com",
-                                                          "password": "Passw0rd1"})
+        resp = self.login("ivanov@example.com", "Passw0rd1")
         self.assertEqual(resp.status_code, 200)
         token = resp.get_json()["access_token"]
         payload = jwt.decode(token, "test-secret", algorithms=["HS256"])
@@ -60,10 +64,8 @@ class AuthTests(ApiTestCase):
 
     def test_login_wrong_password_and_unknown_user_same_error(self):
         self.register()
-        bad = self.client.post("/api/auth/login", json={"email": "ivanov@example.com",
-                                                         "password": "wrong"})
-        unknown = self.client.post("/api/auth/login", json={"email": "no@example.com",
-                                                             "password": "Passw0rd1"})
+        bad = self.login("ivanov@example.com", "wrong")
+        unknown = self.login("no@example.com", "Passw0rd1")
         self.assertEqual(bad.status_code, 401)
         self.assertEqual(bad.get_json(), unknown.get_json())
 
@@ -98,8 +100,7 @@ class AuthTests(ApiTestCase):
         ok = self.client.post("/api/auth/password-reset/confirm",
                               json={"token": token, "new_password": "NewPassw0rd2"})
         self.assertEqual(ok.status_code, 200)
-        login = self.client.post("/api/auth/login", json={"email": "ivanov@example.com",
-                                                           "password": "NewPassw0rd2"})
+        login = self.login("ivanov@example.com", "NewPassw0rd2")
         self.assertEqual(login.status_code, 200)
         # токен одноразовый: повторное использование отклоняется
         again = self.client.post("/api/auth/password-reset/confirm",
