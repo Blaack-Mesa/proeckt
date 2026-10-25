@@ -1,0 +1,79 @@
+@startuml task_state
+title Диаграмма состояний задачи
+[*] --> new : создание
+new --> in_progress : начать работу\n(исполнитель / менеджер)
+new --> rejected : отклонить (менеджер)
+in_progress --> review : передать на проверку\n(исполнитель / менеджер)
+review --> done : принять (менеджер)
+review --> rejected : отклонить (менеджер)
+review --> in_progress : вернуть на доработку (менеджер)
+rejected --> new : вернуть в очередь (менеджер)
+done --> [*]
+@enduml
+
+@startuml module_deps
+title Граф зависимостей модулей
+component "AuthModule" as A
+component "TaskModule" as T
+component "ReportModule" as R
+database "SQLite\nusers, projects, tasks, reports" as DB
+component "events (шина)" as E
+T --> A : JWT, роли (security)
+R --> A : JWT, роли (security)
+R --> T : query_tasks()\nget_project()
+A --> DB
+T --> DB
+R --> DB
+A ..> E : user.*
+T ..> E : task.*
+R ..> E : report.generated
+@enduml
+
+@startuml er
+title ER-диаграмма
+entity users {
+  *id : INTEGER <<PK>>
+  --
+  email : TEXT <<UNIQUE>>
+  full_name : TEXT
+  password_hash : TEXT
+  role : TEXT (admin|manager|executor)
+  is_active : INTEGER
+  created_at : TEXT
+}
+entity projects {
+  *id : INTEGER <<PK>>
+  --
+  name : TEXT
+  description : TEXT
+  owner_id : INTEGER <<FK users>>
+  created_at : TEXT
+}
+entity tasks {
+  *id : INTEGER <<PK>>
+  --
+  project_id : INTEGER <<FK projects>>
+  title : TEXT
+  description : TEXT
+  status : TEXT
+  assignee_id : INTEGER <<FK users>>
+  creator_id : INTEGER <<FK users>>
+  due_date : TEXT
+  created_at : TEXT
+  updated_at : TEXT
+}
+entity reports {
+  *id : INTEGER <<PK>>
+  --
+  report_type : TEXT
+  params : TEXT
+  rows_count : INTEGER
+  created_by : INTEGER <<FK users>>
+  created_at : TEXT
+}
+users ||--o{ projects : владеет
+projects ||--o{ tasks : содержит
+users |o--o{ tasks : исполняет
+users ||--o{ tasks : создаёт
+users ||--o{ reports : формирует
+@enduml
